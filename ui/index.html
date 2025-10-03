@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WhiteBoard</title>
+  </head>
+  <style>
+    .main-div{
+      display: flex;
+    }
+    #my-canvas {
+      border: 2px solid black;
+    }
+    #bottom-canvas {
+      display: grid;
+      grid-template-columns: 110px 150px;
+      grid-template-rows: 40px;
+      grid-column-gap: 10px;
+      grid-row-gap: 0px;
+    }
+    #color-picker-container{
+        display: flex;
+align-items: center;
+    }
+    #client-count-container {   
+        display: flex;
+align-items: center;
+    }
+  </style>
+  <body>
+    <div class="main-div">
+      <canvas id="my-canvas"></canvas>
+      <div id="user-list-div">
+      </div>
+    </div>
+    <div id="bottom-canvas">
+      <div id="color-picker-container" >
+        <label for="color">Color : </label>
+        <input type="color" id="pen-color" value="#f6b73c" />
+      </div>
+      <div id="client-count-container">
+        <label>Client Count : </label>
+        <p id="client-count"> 7 </p>
+      </div>
+    </div>
+  </body>
+
+  <script src="/socket.io/socket.io.js"></script>
+
+  <script>
+    var canvas = document.getElementById('my-canvas');
+    var colorPicker = document.getElementById('pen-color');
+    var clientCount = document.getElementById('client-count');
+    var userList = document.getElementById('user-list-div');
+
+    var username = localStorage.getItem('username');
+
+    canvas.width = 0.6 * window.innerWidth;
+    canvas.height = 0.8 * window.innerHeight;
+
+    var io = io();
+
+    io.emit('add username',username);
+
+    let ctx = canvas.getContext('2d');
+    let x,y,penColor;
+    let lineActive = false;
+
+    canvas.addEventListener('click',(e) => {
+        lineActive = !lineActive
+        ctx.moveTo(x, y)
+        ctx.beginPath();
+        io.emit('down',{x,y})
+    })
+
+    io.on('onDraw', (data) => {
+        drawLine(data);
+    })
+
+    io.on('onDown', (data) => {
+        lineActive = !lineActive
+        ctx.moveTo(data.x, data.y)
+        ctx.beginPath();
+    })
+
+    io.on('update-client-count', (clientIdArr) =>{
+        clientCount.innerHTML = clientIdArr.length
+        updateUserList(clientIdArr)
+    })
+    
+    colorPicker.addEventListener('input', (e) => {
+        penColor = colorPicker.value
+    })
+    
+    window.onmousemove = (e)=>{
+        x = e.clientX;
+        y = e.clientY;
+        if(lineActive){
+            io.emit("draw",{x,y,penColor})
+            drawLine({x,y,penColor});
+        }
+    }
+    
+    const drawLine = (data) => {
+        ctx.strokeStyle = data.penColor;
+        ctx.lineTo(data.x,data.y)
+        ctx.stroke();
+    }
+    
+    const updateUserList = (clientArr) =>{
+        userList.innerHTML = ""
+        clientArr.forEach((element) => {
+            console.log(element);
+            var paragraph = document.createElement("p");
+            paragraph.textContent = element.username
+            userList.append(paragraph);
+        });
+        
+    } 
+
+
+
+  </script>
+</html>
